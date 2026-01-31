@@ -6,7 +6,7 @@ import { baseUrl } from '../utils/apiConstant.js';
 
 const Button = ({ children, onClick, variant = 'primary', icon: Icon, fullWidth = true, type = 'button' }) => {
   let classes = "flex items-center justify-center space-x-2 py-3 px-4 text-sm font-semibold rounded-lg transition duration-150 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2";
-  
+
   if (fullWidth) {
     classes += " w-full";
   }
@@ -51,7 +51,7 @@ const InputField = ({ label, type = 'text', id, icon: Icon, value, onChange, pla
           placeholder={placeholder}
           required
           className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-1 focus:ring-black focus:border-black transition duration-150"
-          />
+        />
         {isPassword && (
           <button
             type="button"
@@ -69,15 +69,15 @@ const InputField = ({ label, type = 'text', id, icon: Icon, value, onChange, pla
 
 
 // --- Standalone Sign Up Form Component ---
- const SignupForm = () => {
-   const [name, setName] = useState('');
-   const [email, setEmail] = useState('');
+const SignupForm = () => {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
 
-  const handleSignup = async(e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
     if (password !== confirmPassword) {
       setMessage('Error: Passwords do not match!');
@@ -85,27 +85,23 @@ const InputField = ({ label, type = 'text', id, icon: Icon, value, onChange, pla
       return;
     }
     // Dummy Signup Logic
-    console.log("Signing up with:", { name, email , password});
-     const res = await axios.post(`${baseUrl}/auth/signUp`,{
+    console.log("Signing up with:", { name, email, password });
+    const res = await axios.post(`${baseUrl}/auth/signUp`, {
       name,
       email,
       password
-     }) 
-     
+    })
+
     if (res.data.success) {
       // Email Verification Code Sent Successfully
-      navigate("/otpVerify"); 
+      navigate("/otpVerify");
     }
     setMessage(`Signing up ${name}... (Verification link sent, check console for details)`);
     // Clear message after 3 seconds
-    setTimeout(() => setMessage(''), 3000); 
+    setTimeout(() => setMessage(''), 3000);
   };
 
-  const handleGoogleSignup = () => {
-    console.log("Attempting Google Sign-in...");
-    setMessage('Redirecting for Google authentication... (Dummy function)');
-    setTimeout(() => setMessage(''), 3000); 
-  };
+
 
   return (
     <div className="w-full max-w-md bg-white p-8 sm:p-10 rounded-xl shadow-2xl border border-gray-200 transition-all duration-300">
@@ -120,26 +116,7 @@ const InputField = ({ label, type = 'text', id, icon: Icon, value, onChange, pla
           </div>
         )}
 
-        {/* Google Sign Up Button */}
-        <Button variant="secondary" onClick={handleGoogleSignup} icon={() => (
-          <img
-            src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg"
-            alt="Google logo"
-            className="w-5 h-5"
-          />
-        )}>
-          Continue with Google
-        </Button>
 
-        {/* Separator */}
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300"></div>
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="bg-white px-2 text-gray-500">Or sign up with email</span>
-          </div>
-        </div>
 
         {/* Name Input */}
         <InputField
@@ -191,7 +168,7 @@ const InputField = ({ label, type = 'text', id, icon: Icon, value, onChange, pla
 
         {/* Removed 'Log in here' button */}
         <div className="text-center text-sm text-gray-500 pt-2">
-            Already have an account? Please visit the <Link to={'/login'}><span className='font-bold underline'>Login.</span></Link>
+          Already have an account? Please visit the <Link to={'/login'}><span className='font-bold underline'>Login.</span></Link>
         </div>
       </form>
     </div>

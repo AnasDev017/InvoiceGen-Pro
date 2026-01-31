@@ -25,13 +25,9 @@ const userSchema = new mongoose.Schema(
       type: Boolean, 
       default: false 
     },
-    isSubscribed: { 
-      type: Boolean, 
-      default: false 
-    },
-    freeLimit: { 
+    credits: { 
       type: Number, 
-      default: 5, 
+      default: 50, 
       min: [0, "Free limit cannot be negative"] 
     },
     profilePic: { 
@@ -45,6 +41,16 @@ const userSchema = new mongoose.Schema(
       type: String, 
       enum: ["free", "pro", "business"], 
       default: "free" 
+    },
+    clientStorage:{
+      type: Number,
+      default: 5,
+      min: [0,"clients limit cannot be negative"]
+    },
+    maxCreditsLimit:{
+      type: Number,
+      min: 50,
+      default: 50
     }
   },
   { timestamps: true }

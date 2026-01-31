@@ -4,6 +4,10 @@ import connentDB from "./config/db.js";
 import cors from 'cors'
 import authRoutes from "./routes/authRoutes.js";
 import cookieParser from "cookie-parser";
+import clientsRouts from "./routes/clientsRoutes.js";
+import generateInvoiceRoutes from "./routes/generateInvoiceRoutes.js";
+import serviesRoutes from "./routes/serviesRoutes.js";
+import analyticsRoutes from "./routes/analyticsRoutes.js";
 configDotenv()
 
 const app = express()
@@ -14,7 +18,10 @@ app.use(cors({
    credentials: true 
 }))
 app.use('/auth',authRoutes)
-
+app.use(clientsRouts)
+app.use(generateInvoiceRoutes)
+app.use(serviesRoutes)
+app.use(analyticsRoutes)
 connentDB()
 app.listen(process.env.PORT,()=>{
    console.log("SERVER IS RUNNING!");

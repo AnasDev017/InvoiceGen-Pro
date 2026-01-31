@@ -169,10 +169,10 @@ export const verifyEmailCode = async (req, res) => {
 // SEND USER PROFILE DATA
 
 export const sendUserData = async (req, res) => {
-  console.log("Recive user data id",req.user.userId);
-  const user = await UserModel.findById(req.user.userId);
+  // console.log("Recive user data id",req.user._id);
+  const user = await UserModel.findById(req.user._id);
   console.log("----------------------------");
-  console.log("Send user data", user);
+  console.log("Send user data of Profile");
   res.json(user);
 };
 
