@@ -87,8 +87,10 @@ export const generateInvoice = async (req, res) => {
       .replace("{{discount}}", discount.toFixed(2))
       .replace("{{grandTotal}}", grandTotal.toFixed(2));
 
-    // Launch settings for Vercel (Node 18) vs Local
+    // Launch settings for Vercel vs Local
     try {
+      console.log("🚀 Node version:", process.version);
+      
       if (process.env.NODE_ENV === "production") {
         browser = await puppeteer.launch({
           args: [
@@ -97,7 +99,8 @@ export const generateInvoice = async (req, res) => {
             "--disable-setuid-sandbox",
             "--disable-dev-shm-usage",
             "--no-zygote",
-            "--disable-gpu"
+            "--disable-gpu",
+            "--font-render-hinting=none"
           ],
           defaultViewport: chromium.defaultViewport,
           executablePath: await chromium.executablePath(),
@@ -231,8 +234,10 @@ export const downloadSavedInvoice = async (req, res) => {
             .replace("{{discount}}", discount.toFixed(2))
             .replace("{{grandTotal}}", grandTotal.toFixed(2));
 
-        // Launch settings for Vercel (Node 18) vs Local
+        // Launch settings for Vercel vs Local
         try {
+            console.log("🚀 Node version:", process.version);
+            
             if (process.env.NODE_ENV === "production") {
                 browser = await puppeteer.launch({
                     args: [
@@ -241,7 +246,8 @@ export const downloadSavedInvoice = async (req, res) => {
                         "--disable-setuid-sandbox",
                         "--disable-dev-shm-usage",
                         "--no-zygote",
-                        "--disable-gpu"
+                        "--disable-gpu",
+                        "--font-render-hinting=none"
                     ],
                     defaultViewport: chromium.defaultViewport,
                     executablePath: await chromium.executablePath(),
