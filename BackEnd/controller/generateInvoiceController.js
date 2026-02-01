@@ -1,5 +1,5 @@
 // Import required modules
-import chromium from "@sparticuz/chromium-min";
+import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
 import fs from "fs";                     // File system to read HTML template
 import path from "path";                 // Path module to handle file paths
@@ -21,12 +21,32 @@ export const generateInvoice = async (req, res) => {
   let browser = null;
   try {
     const { items, formData, template, status, discountAmount, sendOptions } = req.body;
-    const templatePath = path.join(__dirname, "..", "utils", `${template}.html`);
+    
+    // Log environment info for debugging
+    console.log("📂 Current working directory:", process.cwd());
+    console.log("📂 __dirname:", __dirname);
 
-    if (!fs.existsSync(templatePath)) {
-      return res.status(400).send("Template not found");
+    // Try multiple path strategies for Vercel
+    const strategies = [
+      path.join(process.cwd(), "BackEnd", "utils", `${template}.html`),
+      path.join(process.cwd(), "utils", `${template}.html`),
+      path.join(__dirname, "..", "utils", `${template}.html`)
+    ];
+
+    let templatePath = "";
+    for (const p of strategies) {
+      if (fs.existsSync(p)) {
+        templatePath = p;
+        break;
+      }
     }
 
+    if (!templatePath) {
+      console.error("❌ Template not found in strategies:", strategies);
+      return res.status(400).send(`Template not found. Checked: ${strategies.join(", ")}`);
+    }
+
+    console.log("✅ Using template at:", templatePath);
     let html = fs.readFileSync(templatePath, "utf-8");
 
     // Replace placeholders
@@ -143,9 +163,29 @@ export const downloadSavedInvoice = async (req, res) => {
             return res.status(404).send("Invoice not found");
         }
 
-        // Use a default template
-        const templatePath = path.join(__dirname, "..", "utils", "template1.html"); 
+        // Try multiple path strategies for Vercel
+        const strategies = [
+            path.join(process.cwd(), "BackEnd", "utils", "template1.html"),
+            path.join(process.cwd(), "utils", "template1.html"),
+            path.join(__dirname, "..", "utils", "template1.html")
+        ];
+
+        let templatePath = "";
+        for (const p of strategies) {
+            if (fs.existsSync(p)) {
+                templatePath = p;
+                break;
+            }
+        }
+
+        if (!templatePath) {
+            console.error("❌ Template not found in strategies:", strategies);
+            return res.status(404).send(`Template not found. Checked: ${strategies.join(", ")}`);
+        }
+
+        console.log("✅ Using template at:", templatePath);
         let html = fs.readFileSync(templatePath, "utf-8");
+
 
         // Mock items since we don't save them
         const items = [{
