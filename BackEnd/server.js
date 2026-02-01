@@ -1,30 +1,41 @@
 import express from "express";
 import { configDotenv } from "dotenv";
-import connentDB from "./config/db.js";
-import cors from 'cors'
-import authRoutes from "./routes/authRoutes.js";
+import connectDB from "./config/db.js";
+import cors from "cors";
 import cookieParser from "cookie-parser";
-import clientsRouts from "./routes/clientsRoutes.js";
+
+import authRoutes from "./routes/authRoutes.js";
+import clientsRoutes from "./routes/clientsRoutes.js";
 import generateInvoiceRoutes from "./routes/generateInvoiceRoutes.js";
-import serviesRoutes from "./routes/serviesRoutes.js";
+import servicesRoutes from "./routes/serviesRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
-configDotenv()
 
-const app = express()
-app.use(express.json())
-app.use(cookieParser())
+configDotenv();
+
+const app = express();
+
+app.use(express.json());
+app.use(cookieParser());
 app.use(cors({
-   origin: true, 
-   credentials: true 
-}))
-app.use('/auth',authRoutes)
-app.use(clientsRouts)
-app.use(generateInvoiceRoutes)
-app.use(serviesRoutes)
-app.use(analyticsRoutes)
+  origin: true,
+  credentials: true,
+}));
 
-// Connect to database
-connentDB()
+// 🔥 DB middleware (safe for serverless)
+app.use(async (req, res, next) => {
+  await connectDB();
+  next();
+});
 
-// Export the app for Vercel serverless functions
-export default app
+app.use("/auth", authRoutes);
+app.use(clientsRoutes);
+app.use(generateInvoiceRoutes);
+app.use(servicesRoutes);
+app.use(analyticsRoutes);
+
+// ✅ test route (IMPORTANT)
+app.get("/", (req, res) => {
+  res.status(200).json({ success: true, message: "API working" });
+});
+
+export default app;
