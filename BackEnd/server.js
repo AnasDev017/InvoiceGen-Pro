@@ -1,32 +1,28 @@
 import express from "express";
 import { configDotenv } from "dotenv";
-import connectDB from "./config/db.js";
-import cors from "cors";
-import cookieParser from "cookie-parser";
-
+import connentDB from "./config/db.js";
+import cors from 'cors'
 import authRoutes from "./routes/authRoutes.js";
-import clientsRoutes from "./routes/clientsRoutes.js";
+import cookieParser from "cookie-parser";
+import clientsRouts from "./routes/clientsRoutes.js";
 import generateInvoiceRoutes from "./routes/generateInvoiceRoutes.js";
-import servicesRoutes from "./routes/serviesRoutes.js";
+import serviesRoutes from "./routes/serviesRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
+configDotenv()
 
-configDotenv();
-
-const app = express();
-
-app.use(express.json());
-app.use(cookieParser());
+const app = express()
+app.use(express.json())
+app.use(cookieParser())
 app.use(cors({
-  origin: true,
-  credentials: true
-}));
-
-connectDB();
-
-app.use("/auth", authRoutes);
-app.use(clientsRoutes);
-app.use(generateInvoiceRoutes);
-app.use(servicesRoutes);
-app.use(analyticsRoutes);
-
-export default app;
+   origin: true, 
+   credentials: true 
+}))
+app.use('/auth',authRoutes)
+app.use(clientsRouts)
+app.use(generateInvoiceRoutes)
+app.use(serviesRoutes)
+app.use(analyticsRoutes)
+connentDB()
+app.listen(process.env.PORT,()=>{
+   console.log("SERVER IS RUNNING!");
+})
