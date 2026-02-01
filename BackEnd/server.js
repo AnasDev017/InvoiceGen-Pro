@@ -41,11 +41,25 @@
 // export default app;
 
 import express from "express";
+import { configDotenv } from "dotenv";
+import connectDB from "./config/db.js";
+
+configDotenv();
 
 const app = express();
 
+// DB connect middleware
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    return res.status(500).json({ error: "DB FAILED" });
+  }
+});
+
 app.get("/", (req, res) => {
-  res.status(200).json({ message: "SERVER WORKING" });
+  res.json({ message: "DB OK" });
 });
 
 export default app;
