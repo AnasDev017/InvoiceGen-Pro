@@ -28,7 +28,7 @@ app.use(async (req, res, next) => {
 });
 
 app.use("/auth", authRoutes);
-app.use(clientsRoutes);
+// app.use(clientsRoutes);
 // app.use(generateInvoiceRoutes);
 // app.use(servicesRoutes);
 // app.use(analyticsRoutes);
