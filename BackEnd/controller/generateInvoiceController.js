@@ -1,52 +1,34 @@
-// Import required modules
-import chromium from "@sparticuz/chromium";
+import chromium from "chrome-aws-lambda";
 import puppeteer from "puppeteer-core";
-import fs from "fs";                     // File system to read HTML template
-import path from "path";                 // Path module to handle file paths
-import { fileURLToPath } from "url";     // Needed to define __dirname in ESM
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import invoiceModel from "../models/invoiceModel.js";
 import UserModel from "../models/userModel.js";
 import crypto from "crypto";
 
-// ------------------------
-// Define __dirname in ESM mode
-// ------------------------
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // ------------------------
-// Exported function to generate invoice PDF
+// Generate Invoice PDF
 // ------------------------
 export const generateInvoice = async (req, res) => {
   let browser = null;
   try {
-    const { items, formData, template, status, discountAmount, sendOptions } = req.body;
-    
-    // Log environment info for debugging
-    console.log("📂 Current working directory:", process.cwd());
-    console.log("📂 __dirname:", __dirname);
+    const { items, formData, template, status, discountAmount } = req.body;
 
-    // Try multiple path strategies for Vercel
+    // Template path
     const strategies = [
       path.join(process.cwd(), "BackEnd", "utils", `${template}.html`),
       path.join(process.cwd(), "utils", `${template}.html`),
       path.join(__dirname, "..", "utils", `${template}.html`)
     ];
-
-    let templatePath = "";
-    for (const p of strategies) {
-      if (fs.existsSync(p)) {
-        templatePath = p;
-        break;
-      }
-    }
-
+    let templatePath = strategies.find(p => fs.existsSync(p));
     if (!templatePath) {
-      console.error("❌ Template not found in strategies:", strategies);
-      return res.status(400).send(`Template not found. Checked: ${strategies.join(", ")}`);
+      return res.status(400).json({ success: false, message: "Template not found" });
     }
 
-    console.log("✅ Using template at:", templatePath);
     let html = fs.readFileSync(templatePath, "utf-8");
 
     // Replace placeholders
@@ -54,81 +36,61 @@ export const generateInvoice = async (req, res) => {
                .replace("{{clientEmail}}", formData.clientEmail)
                .replaceAll("{{invoiceId}}", formData.invoiceNumber)
                .replace("{{date}}", formData.dueDate);
-    
-    const user = await UserModel.findById(req.user._id);
-    const senderName = user ? user.name : "Sender";
-    const senderEmail = user ? user.email : "";
 
-    html = html.replace("{{senderName}}", senderName)
-               .replace("{{senderEmail}}", senderEmail);
+    const user = await UserModel.findById(req.user._id);
+    html = html.replace("{{senderName}}", user?.name || "Sender")
+               .replace("{{senderEmail}}", user?.email || "");
 
     let subTotal = 0;
-    let itemsHtml = items.map(i => {
+    const itemsHtml = items.map(i => {
       const qty = Number(i.quantity);
       const price = Number(i.price);
       const rowTotal = qty * price;
       subTotal += rowTotal;
-      return `
-        <tr class="border-thin">
-          <td class="py-4 px-4 font-medium">${i.description}</td>
-          <td class="py-4 px-4 text-center">${qty}</td>
-          <td class="py-4 px-4 text-center">$${price.toFixed(2)}</td>
-          <td class="py-4 px-4 text-right font-bold">$${rowTotal.toFixed(2)}</td>
-        </tr>
-      `;
+      return `<tr class="border-thin">
+        <td class="py-4 px-4 font-medium">${i.description}</td>
+        <td class="py-4 px-4 text-center">${qty}</td>
+        <td class="py-4 px-4 text-center">$${price.toFixed(2)}</td>
+        <td class="py-4 px-4 text-right font-bold">$${rowTotal.toFixed(2)}</td>
+      </tr>`;
     }).join("");
 
     const discount = Number(discountAmount || 0);
     const grandTotal = subTotal - discount;
 
-    html = html
-      .replace("{{items}}", itemsHtml)
-      .replace("{{subTotal}}", subTotal.toFixed(2))
-      .replace("{{discount}}", discount.toFixed(2))
-      .replace("{{grandTotal}}", grandTotal.toFixed(2));
+    html = html.replace("{{items}}", itemsHtml)
+               .replace("{{subTotal}}", subTotal.toFixed(2))
+               .replace("{{discount}}", discount.toFixed(2))
+               .replace("{{grandTotal}}", grandTotal.toFixed(2));
 
-    // Launch settings for Node 20+ (Vercel AL2023)
-    try {
-      if (process.env.NODE_ENV === "production") {
-        browser = await puppeteer.launch({
-          args: [
-            ...chromium.args,
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage",
-            "--no-zygote",
-            "--disable-gpu",
-            "--single-process",
-          ],
-          defaultViewport: chromium.defaultViewport,
-          executablePath: await chromium.executablePath(),
-          headless: chromium.headless,
-        });
-      } else {
-        console.log("🛠️ Launching Local Puppeteer...");
-        browser = await puppeteer.launch({
-          args: ["--no-sandbox", "--disable-setuid-sandbox"],
-          headless: true,
-        });
-      }
-      console.log("✅ Browser launched successfully");
-    } catch (launchError) {
-      console.error("❌ Browser launch failed:", launchError);
-      throw launchError;
-    }
-
-    
-    const page = await browser.newPage();            
-    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 60000 });
-
-    const pdfBuffer = await page.pdf({               
-      format: 'A4',
-      printBackground: true,
-      margin: { top: "20px", bottom: "20px", left: "20px", right: "20px" } 
+    // Puppeteer launch
+    browser = await puppeteer.launch({
+      args: [
+        ...chromium.args,
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--single-process",
+        "--no-zygote"
+      ],
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: true,
     });
 
-    await browser.close();  
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: "domcontentloaded", timeout: 60000 });
 
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: { top: "20px", bottom: "20px", left: "20px", right: "20px" }
+    });
+
+    await browser.close();
+
+    // Save invoice in DB
     await invoiceModel.create({
       user: req.user._id,
       invoiceId: crypto.randomUUID(),
@@ -138,150 +100,112 @@ export const generateInvoice = async (req, res) => {
       status,
       dueDate: formData.dueDate,
     });
-    
+
+    // Send PDF
     res.set({
       "Content-Type": "application/pdf",
       "Content-Disposition": `inline; filename=Invoice_${formData.invoiceNumber}.pdf`,
     });
-    
     res.send(pdfBuffer);
 
   } catch (err) {
     console.error("🔥 Error in generateInvoice:", err);
     if (browser) await browser.close();
-    res.status(500).send(`Error generating PDF: ${err.message}`);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
+// ------------------------
+// Download Saved Invoice
+// ------------------------
 export const downloadSavedInvoice = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const invoice = await invoiceModel.findOne({ _id: id, user: req.user._id });
+  let browser = null;
+  try {
+    const { id } = req.params;
+    const invoice = await invoiceModel.findOne({ _id: id, user: req.user._id });
+    if (!invoice) return res.status(404).json({ success: false, message: "Invoice not found" });
 
-        if (!invoice) {
-            return res.status(404).send("Invoice not found");
-        }
+    const strategies = [
+      path.join(process.cwd(), "BackEnd", "utils", "template1.html"),
+      path.join(process.cwd(), "utils", "template1.html"),
+      path.join(__dirname, "..", "utils", "template1.html")
+    ];
+    const templatePath = strategies.find(p => fs.existsSync(p));
+    if (!templatePath) return res.status(404).json({ success: false, message: "Template not found" });
 
-        // Try multiple path strategies for Vercel
-        const strategies = [
-            path.join(process.cwd(), "BackEnd", "utils", "template1.html"),
-            path.join(process.cwd(), "utils", "template1.html"),
-            path.join(__dirname, "..", "utils", "template1.html")
-        ];
+    let html = fs.readFileSync(templatePath, "utf-8");
 
-        let templatePath = "";
-        for (const p of strategies) {
-            if (fs.existsSync(p)) {
-                templatePath = p;
-                break;
-            }
-        }
+    // Replace placeholders
+    html = html.replace("{{clientName}}", invoice.clientName)
+               .replace("{{clientEmail}}", "")
+               .replaceAll("{{invoiceId}}", invoice.invoiceNumber)
+               .replace("{{date}}", new Date(invoice.createdAt).toLocaleDateString());
 
-        if (!templatePath) {
-            console.error("❌ Template not found in strategies:", strategies);
-            return res.status(404).send(`Template not found. Checked: ${strategies.join(", ")}`);
-        }
+    const user = await UserModel.findById(req.user._id);
+    html = html.replace("{{senderName}}", user?.name || "Sender")
+               .replace("{{senderEmail}}", user?.email || "");
 
-        console.log("✅ Using template at:", templatePath);
-        let html = fs.readFileSync(templatePath, "utf-8");
+    const items = [{
+      description: "Invoice Services (Summary)",
+      quantity: 1,
+      price: invoice.totalAmount
+    }];
 
+    let subTotal = 0;
+    const itemsHtml = items.map(i => {
+      const qty = Number(i.quantity);
+      const price = Number(i.price);
+      const rowTotal = qty * price;
+      subTotal += rowTotal;
+      return `<tr class="border-thin">
+        <td class="py-4 px-4 font-medium">${i.description}</td>
+        <td class="py-4 px-4 text-center">${qty}</td>
+        <td class="py-4 px-4 text-center">$${price.toFixed(2)}</td>
+        <td class="py-4 px-4 text-right font-bold">$${rowTotal.toFixed(2)}</td>
+      </tr>`;
+    }).join("");
 
-        // Mock items since we don't save them
-        const items = [{
-            description: "Invoice Services (Summary)",
-            quantity: 1,
-            price: invoice.totalAmount
-        }];
+    const grandTotal = subTotal;
+    html = html.replace("{{items}}", itemsHtml)
+               .replace("{{subTotal}}", subTotal.toFixed(2))
+               .replace("{{discount}}", "0.00")
+               .replace("{{grandTotal}}", grandTotal.toFixed(2));
 
-        // Replace placeholders
-        // Note: We might be missing clientEmail if not saved, so fallback to empty
-        html = html.replace("{{clientName}}", invoice.clientName)
-                   .replace("{{clientEmail}}", "") 
-                   .replaceAll("{{invoiceId}}", invoice.invoiceNumber)
-                   .replace("{{date}}", new Date(invoice.createdAt).toLocaleDateString());
+    // Puppeteer launch
+    browser = await puppeteer.launch({
+      args: [
+        ...chromium.args,
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--single-process",
+        "--no-zygote"
+      ],
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: true,
+    });
 
-        // Fetch sender details
-        const user = await UserModel.findById(req.user._id);
-        const senderName = user ? user.name : "Sender";
-        const senderEmail = user ? user.email : "";
- 
-        html = html.replace("{{senderName}}", senderName)
-                   .replace("{{senderEmail}}", senderEmail);
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: "domcontentloaded", timeout: 60000 });
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: { top: "20px", bottom: "20px", left: "20px", right: "20px" }
+    });
 
-        let subTotal = 0;
-        let itemsHtml = items.map(i => {
-            const qty = Number(i.quantity);
-            const price = Number(i.price);
-            const rowTotal = qty * price;
-            subTotal += rowTotal;
-            return `
-                <tr class="border-thin">
-                <td class="py-4 px-4 font-medium">${i.description}</td>
-                <td class="py-4 px-4 text-center">${qty}</td>
-                <td class="py-4 px-4 text-center">$${price.toFixed(2)}</td>
-                <td class="py-4 px-4 text-right font-bold">$${rowTotal.toFixed(2)}</td>
-                </tr>
-            `;
-        }).join("");
+    await browser.close();
 
-        const discount = 0; // Not saved
-        const grandTotal = subTotal; // Already total
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `inline; filename=${invoice.invoiceNumber}.pdf`,
+    });
+    res.send(pdfBuffer);
 
-        html = html
-            .replace("{{items}}", itemsHtml)
-            .replace("{{subTotal}}", subTotal.toFixed(2))
-            .replace("{{discount}}", discount.toFixed(2))
-            .replace("{{grandTotal}}", grandTotal.toFixed(2));
-
-        // Launch settings for Node 20+ (Vercel AL2023)
-        try {
-            if (process.env.NODE_ENV === "production") {
-                browser = await puppeteer.launch({
-                    args: [
-                        ...chromium.args,
-                        "--no-sandbox",
-                        "--disable-setuid-sandbox",
-                        "--disable-dev-shm-usage",
-                        "--no-zygote",
-                        "--disable-gpu",
-                        "--single-process",
-                    ],
-                    defaultViewport: chromium.defaultViewport,
-                    executablePath: await chromium.executablePath(),
-                    headless: chromium.headless,
-                });
-            } else {
-                console.log("🛠️ Launching Local Puppeteer...");
-                browser = await puppeteer.launch({
-                    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-                    headless: true,
-                });
-            }
-            console.log("✅ Browser launched successfully");
-        } catch (launchError) {
-            console.error("❌ Browser launch failed:", launchError);
-            throw launchError;
-        }
-
-
-        const page = await browser.newPage();
-        await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 60000 });
-        const pdfBuffer = await page.pdf({
-            format: 'A4',
-            printBackground: true,
-            margin: { top: "20px", bottom: "20px", left: "20px", right: "20px" }
-        });
-        await browser.close();
-
-        res.set({
-            "Content-Type": "application/pdf",
-            "Content-Disposition": `inline; filename=${invoice.invoiceNumber}.pdf`,
-        });
-        res.send(pdfBuffer);
-
-    } catch (err) {
-        console.error("🔥 Error downloading PDF:", err);
-        if (browser) await browser.close();
-        res.status(500).send(`Error downloading PDF: ${err.message}`);
-    }
+  } catch (err) {
+    console.error("🔥 Error downloading PDF:", err);
+    if (browser) await browser.close();
+    res.status(500).json({ success: false, message: err.message });
+  }
 };
