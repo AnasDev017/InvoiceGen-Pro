@@ -22,10 +22,10 @@ app.use(cors({
 }));
 
 // 🔥 DB middleware (safe for serverless)
-app.use(async (req, res, next) => {
-  await connectDB();
-  next();
-});
+// app.use(async (req, res, next) => {
+//   await connectDB();
+//   next();
+// });
 
 app.use("/auth", authRoutes);
 app.use(clientsRoutes);
