@@ -28,25 +28,16 @@ app.use(cors({
 //   next();
 // });
 
-app.use("/auth", authRoutes);
-app.use(clientsRoutes);
-app.use(generateInvoiceRoutes);
-app.use(servicesRoutes);
-app.use(analyticsRoutes);
-
 // // ✅ test route (IMPORTANT)
 // app.get("/", (req, res) => {
 //   res.status(200).json({ success: true, message: "API working" });
 // });
 
-// export default app;
+app.get("/", (req, res) => {
+  res.json({ message: "DB OK" });
+});
 
-
-
-
-
-
-// DB connect middleware
+// DB connect middleware (Must be ABOVE routes)
 app.use(async (req, res, next) => {
   try {
     await connectDB();
@@ -56,8 +47,10 @@ app.use(async (req, res, next) => {
   }
 });
 
-app.get("/", (req, res) => {
-  res.json({ message: "DB OK" });
-});
+app.use("/auth", authRoutes);
+app.use(clientsRoutes);
+app.use(generateInvoiceRoutes);
+app.use(servicesRoutes);
+app.use(analyticsRoutes);
 
 export default app;
