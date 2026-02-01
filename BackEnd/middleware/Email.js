@@ -76,10 +76,12 @@ export  const sendVerificationMail = async (email, verificationCode, verificatio
        html: htmlContent,
     });
 
-    console.log("Email sent: ", info.messageId);
+    console.log("✅ Email sent successfully:", info.messageId);
+    return info;
   } catch (error) {
-    console.log(error);
-    
+    console.error("❌ Email sending failed:", error.message);
+    // Re-throw the error so signup knows it failed
+    throw new Error(`Failed to send verification email: ${error.message}`);
   }
 };
 

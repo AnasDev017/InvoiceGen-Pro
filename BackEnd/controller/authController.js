@@ -35,8 +35,24 @@ export const signUp = async (req, res) => {
       verificationCode,
     });
 
+    // Try to send verification email
     const verificationLink = `http://localhost:5000/api/auth/verify?code=${verificationCode}`;
-    await sendVerificationMail(email, verificationCode, verificationLink);
+    
+    try {
+      await sendVerificationMail(email, verificationCode, verificationLink);
+      console.log("✅ Verification email sent to:", email);
+    } catch (emailError) {
+      console.error("❌ Email sending failed:", emailError.message);
+      // Still save user but inform them about email issue
+      await newUser.save();
+      return res.status(200).json({
+        success: true,
+        message: "Account registered, but verification email could not be sent. Please contact support.",
+        emailError: process.env.NODE_ENV === "development" ? emailError.message : undefined,
+        verificationCode: process.env.NODE_ENV === "development" ? verificationCode : undefined
+      });
+    }
+    
     await newUser.save();
 
     res.status(200).json({
@@ -45,8 +61,12 @@ export const signUp = async (req, res) => {
       newUser,
     });
   } catch (err) {
-    console.log(err);
-    res.status(500).json({ success: false, message: "Internal server error!" });
+    console.error("❌ Signup error:", err);
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal server error!",
+      error: process.env.NODE_ENV === "development" ? err.message : undefined
+    });
   }
 };
 
