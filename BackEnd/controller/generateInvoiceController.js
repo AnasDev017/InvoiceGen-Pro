@@ -1,5 +1,6 @@
 // Import required modules
-import puppeteer from "puppeteer";      // Puppeteer for HTML -> PDF conversion
+import chromium from "@sparticuz/chromium";
+import puppeteer from "puppeteer-core";
 import fs from "fs";                     // File system to read HTML template
 import path from "path";                 // Path module to handle file paths
 import { fileURLToPath } from "url";     // Needed to define __dirname in ESM
@@ -17,6 +18,7 @@ const __dirname = path.dirname(__filename);
 // Exported function to generate invoice PDF
 // ------------------------
 export const generateInvoice = async (req, res) => {
+  let browser = null;
   try {
     // ------------------------
     const { items,formData,template,status,discountAmount,sendOptions } = req.body;
@@ -87,11 +89,13 @@ html = html
   .replace("{{grandTotal}}", grandTotal.toFixed(2));
 
     // ------------------------
-    // Step 5: Launch Puppeteer to generate PDF
+    // Step 5: Launch Puppeteer with chrome-aws-lambda for serverless
     // ------------------------
-    const browser = await puppeteer.launch({
-      headless: true,           // Run headless
-      args: ["--no-sandbox"],   // Avoid sandbox issues
+    browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
     });
     const page = await browser.newPage();            
 
@@ -197,8 +201,10 @@ export const downloadSavedInvoice = async (req, res) => {
             .replace("{{grandTotal}}", grandTotal.toFixed(2));
 
         const browser = await puppeteer.launch({
-            headless: true,
-            args: ["--no-sandbox"],
+            args: chromium.args,
+            defaultViewport: chromium.defaultViewport,
+            executablePath: await chromium.executablePath(),
+            headless: chromium.headless,
         });
         const page = await browser.newPage();
         await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 60000 });
