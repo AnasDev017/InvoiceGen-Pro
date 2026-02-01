@@ -62,6 +62,7 @@ import {
 } from "lucide-react";
 import { baseUrl } from "../utils/apiConstant.js";
 import axios from "axios";
+import api from "../utils/axiosInstance";
 import { useNavigate } from "react-router-dom";
 
 const CreateInvoicePage = ({ fetchCredits }) => {
@@ -124,7 +125,7 @@ const CreateInvoicePage = ({ fetchCredits }) => {
   useEffect(() => {
     const getSavedClients = async () => {
       try {
-        const res = await axios.get(`${baseUrl}/getClients`, {
+        const res = await api.get(`${baseUrl}/getClients`, {
           withCredentials: true,
         });
 
@@ -153,7 +154,7 @@ const CreateInvoicePage = ({ fetchCredits }) => {
   useEffect(() => {
     const fetchInvoiceNumber = async () => {
       try {
-        const res = await axios.get(`${baseUrl}/getNextInvoiceNumber`, { withCredentials: true });
+        const res = await api.get(`${baseUrl}/getNextInvoiceNumber`, { withCredentials: true });
         if (res.data.success) {
           setFormData(prev => ({
             ...prev,
@@ -189,7 +190,7 @@ const CreateInvoicePage = ({ fetchCredits }) => {
       setLoading(true);
       showSnackbar("Generating Your Invoice| Please Wait A Moment!", "success");
 
-      const res = await axios.post(
+      const res = await api.post(
         `${baseUrl}/generateInvoice`,
         {
           items,
